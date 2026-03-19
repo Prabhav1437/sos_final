@@ -46,7 +46,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy built app and required files
 COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/next.config.js ./
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
 COPY --from=builder /app/public ./public
