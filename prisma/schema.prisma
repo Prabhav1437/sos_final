@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Personal Info
+  name        String
+  address     String
+  height      String?
+  weight      String?
+  photoUrl    String?
+
+  // Emergency Contacts
+  contacts    EmergencyContact[]
+
+  // Family Doctor
+  doctorName    String?
+  doctorContact String?
+  doctorAddress String?
+
+  // Medical History
+  visionPower           String?
+  bloodPressure         String?
+  sugar                 String?
+  bloodGroup            String?
+  allergies             String?
+  covidVaccination      String?
+  bloodDonorContactName String?
+  bloodDonorContactPhone String?
+  drugAllergy           String?
+  foodAllergy           String?
+
+  // Medical Insurance
+  insurancePolicyNo     String?
+  insuranceCompany      String?
+  insuranceHospital     String?
+  insuranceCashlessCard String?
+  insuranceCardUrl      String?
+  insuranceValidity     String?
+  insuranceAgentContact String?
+}
+
+model EmergencyContact {
+  id           String @id @default(uuid())
+  userId       String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name         String
+  contactLocal String
+  contactOut   String?
+  relationship String // Family, Friend, Work Place Colleague
+}
