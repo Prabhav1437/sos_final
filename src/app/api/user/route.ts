@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { exec } from 'child_process'
 import { promisify } from 'util'
-import * as path from 'path'
+import QRCode from 'qrcode'
+import fs from 'fs'
 
 const execAsync = promisify(exec)
 
@@ -10,7 +11,7 @@ export async function POST(req: Request) {
   try {
     const data = await req.json()
     
-    // Save to database
+    // 1. Save to database
     const user = await prisma.user.create({
       data: {
         name: data.name,
@@ -43,14 +44,17 @@ export async function POST(req: Request) {
         insuranceAgentContact: data.insuranceAgentContact,
 
         contacts: {
-          create: data.contacts || [] // Array of {name, contactLocal, contactOut, relationship}
+          create: (data.contacts || []).map((c: any) => ({
+             name: c.name,
+             contactLocal: c.contactLocal,
+             contactOut: c.contactOut,
+             relationship: c.relationship
+          }))
         }
       }
     })
 
-    // Determine base URL:
-    // If NEXT_PUBLIC_SITE_URL is set (production), use it.
-    // Otherwise, discover local IP so it can be scanned by a phone on the same WiFi!
+    // 2. Determine base URL (Production vs WiFi Local IP Dev)
     let baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
     if (!baseUrl) {
       const os = require('os');
@@ -69,17 +73,34 @@ export async function POST(req: Request) {
     }
 
     const url = `${baseUrl}/user/${user.id}`
+    let qrBase64 = '';
 
-    // Run python script
-    const pyScript = `${process.cwd()}/qr_generator.py`
-    const pyVenv = `${process.cwd()}/.venv/bin/python`
-    const { stdout, stderr } = await execAsync(`"${pyVenv}" "${pyScript}" "${url}"`)
-
-    if (stderr && stderr.trim()) {
-      console.warn("Python runtime warning:", stderr)
+    // 3. Attempt Python QR Generation (Honors User preference for Railway/Docker)
+    try {
+      const pyScript = `${process.cwd()}/qr_generator.py`
+      const pyVenv = `${process.cwd()}/.venv/bin/python`
+      
+      // Check if python environment exists
+      if (fs.existsSync(pyVenv)) {
+         const { stdout } = await execAsync(`"${pyVenv}" "${pyScript}" "${url}"`)
+         qrBase64 = stdout.trim()
+      } else {
+         throw new Error("Python venv not found. Running Vercel-optimized fallback.")
+      }
+    } catch (pyError) {
+      console.warn("Python QR generation failed - using TypeScript Fallback:", pyError)
+      
+      // 4. Node.js Fallback (for Vercel)
+      // Matches the Yellow coding from the Python script
+      qrBase64 = await QRCode.toDataURL(url, {
+        color: {
+          dark: '#000000',  // Black QR
+          light: '#FFFF00'  // Yellow Background
+        },
+        margin: 4,
+        width: 600
+      })
     }
-
-    const qrBase64 = stdout.trim()
 
     return NextResponse.json({ success: true, user, qrCode: qrBase64 })
 
