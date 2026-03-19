@@ -78,7 +78,14 @@ export async function POST(req: Request) {
     // 3. Attempt Python QR Generation (Honors User preference for Railway/Docker)
     try {
       const pyScript = `${process.cwd()}/qr_generator.py`
-      const pyVenv = `${process.cwd()}/.venv/bin/python`
+      
+      // Use absolute path for Docker to avoid Turbopack "symlink out of root" errors
+      let pyVenv = '/opt/venv/bin/python'
+      
+      // Fallback for local development if /opt/venv/bin/python doesn't exist
+      if (!fs.existsSync(pyVenv)) {
+         pyVenv = `${process.cwd()}/.venv/bin/python`
+      }
       
       // Check if python environment exists
       if (fs.existsSync(pyVenv)) {
