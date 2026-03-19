@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # Next.js Application Environment Variables
+      - DATABASE_URL=postgresql://sos_user:password123@db:5432/sos_database?schema=public
+      - NEXT_PUBLIC_SITE_URL=http://localhost:3000
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=sos_user
+      - POSTGRES_PASSWORD=password123
+      - POSTGRES_DB=sos_database
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
